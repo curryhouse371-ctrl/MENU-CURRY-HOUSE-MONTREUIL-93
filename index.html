@@ -53,4 +53,139 @@
       <p><strong>Adresse :</strong> 72 rue Beaumarchais, 93100 Montreuil</p>
       <p><strong>Tél :</strong> 
         <a class="text-orange-600" href="tel:0983036692">09 83 03 66 92</a> / 
-        <a
+        <a class="text-orange-600" href="tel:0763424110">07 63 42 41 10</a>
+      </p>
+      <p><a href="https://wa.me/33763424110" target="_blank" class="text-green-600 font-medium">💬 Contactez-nous sur WhatsApp</a></p>
+    </div>
+  </footer>
+
+  <script>
+    const DATA = [
+      { category: "Entrées", items: [
+        { name: "Poulet tikka", price: 4.50 },
+        { name: "Agneau tikka", price: 5.50 },
+        { name: "Samossa légumes (2 pcs)", price: 4.00 },
+      ]},
+      { category: "Plats Tandoori", items: [
+        { name: "Poulet tandoori", price: 8.50 },
+        { name: "Mixed grill", price: 14.90 },
+      ]},
+      { category: "Pains maison", items: [
+        { name: "Naan nature", price: 2.00 },
+        { name: "Naan fromage", price: 3.00 },
+      ]}
+    ];
+
+    const CATEGORY_IMAGES = {
+      "Entrées": "https://source.unsplash.com/1600x900/?indian,appetizer",
+      "Plats Tandoori": "https://source.unsplash.com/1600x900/?tandoori,grill,indian",
+      "Pains maison": "https://source.unsplash.com/1600x900/?naan,indian,bread"
+    };
+
+    const menuEl = document.getElementById("menu");
+    const selected = new Map();
+    const euro = n => `${n.toFixed(2).replace(".", ",")} €`;
+
+    function itemRow(item){
+      const id = `id_${Math.random().toString(36).slice(2,9)}`;
+      return `
+        <div class="flex items-center justify-between py-2 border-b border-orange-50 gap-3">
+          <div class="flex items-start gap-3">
+            <input id="${id}" type="checkbox" class="checkbox mt-1" data-name="${item.name}" data-price="${item.price}">
+            <label for="${id}" class="cursor-pointer font-medium">${item.name}</label>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="flex items-center gap-1" data-qty="${id}" style="display:none;">
+              <div class="qty-btn" data-action="minus" data-id="${id}">-</div>
+              <span id="qty_${id}">1</span>
+              <div class="qty-btn" data-action="plus" data-id="${id}">+</div>
+            </div>
+            <div class="price">${euro(item.price)}</div>
+          </div>
+        </div>`;
+    }
+
+    function render(){
+      menuEl.innerHTML = DATA.map(cat => `
+        <section class="mb-10">
+          <h2 class="text-2xl font-semibold title-gradient mb-3">${cat.category}</h2>
+          <div class="cat-image rounded-xl overflow-hidden mb-4">
+            <img src="${CATEGORY_IMAGES[cat.category]||''}" class="w-full h-48 object-cover">
+          </div>
+          <div class="card p-4">${cat.items.map(itemRow).join("")}</div>
+        </section>`).join("");
+
+      attachHandlers();
+    }
+
+    function attachHandlers(){
+      document.querySelectorAll('input[type="checkbox"]').forEach(cb=>{
+        cb.addEventListener("change",()=>{
+          const id = cb.id;
+          const name = cb.dataset.name;
+          const price = parseFloat(cb.dataset.price);
+          const qtyBox = document.querySelector(`[data-qty="${id}"]`);
+          if(cb.checked){
+            selected.set(id,{name,price,qty:1});
+            qtyBox.style.display="flex";
+          }else{
+            selected.delete(id);
+            qtyBox.style.display="none";
+          }
+          updateTotal();
+        });
+      });
+
+      document.querySelectorAll(".qty-btn").forEach(btn=>{
+        btn.addEventListener("click",()=>{
+          const id = btn.dataset.id;
+          const item = selected.get(id);
+          if(!item) return;
+          if(btn.dataset.action==="plus") item.qty++;
+          else if(btn.dataset.action==="minus" && item.qty>1) item.qty--;
+          document.getElementById(`qty_${id}`).textContent=item.qty;
+          updateTotal();
+        });
+      });
+    }
+
+    const bar=document.createElement("div");
+    bar.className="sticky-bar";
+    bar.innerHTML=`
+      <div class="max-w-6xl mx-auto px-4 py-3 flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
+        <div class="flex-1 flex items-center gap-2">
+          <label for="clientName" class="text-sm text-gray-700 whitespace-nowrap">Nom du client :</label>
+          <input id="clientName" type="text" placeholder="ex. Karim" class="flex-1 px-3 py-2 rounded-lg border border-orange-200 focus:outline-none focus:ring-2 focus:ring-orange-300" />
+        </div>
+        <div id="orderTotal" class="text-lg font-semibold text-gray-900">Total : 0,00 €</div>
+        <a id="sendWhatsApp" href="#" class="px-5 py-3 rounded-xl bg-green-600 text-white font-semibold text-center md:min-w-[280px]">💬 Envoyer la commande sur WhatsApp</a>
+      </div>`;
+    document.body.appendChild(bar);
+
+    function calcTotal(){
+      let total=0;
+      for(const item of selected.values()){ total += item.price*item.qty; }
+      return total;
+    }
+
+    function updateTotal(){
+      document.getElementById("orderTotal").textContent = "Total : " + euro(calcTotal());
+    }
+
+    document.getElementById("sendWhatsApp").addEventListener("click", e=>{
+      e.preventDefault();
+      if(selected.size===0){ alert("Merci de cocher au moins un plat avant d’envoyer la commande."); return; }
+      const name=document.getElementById("clientName").value.trim();
+      let msg=`Bonjour Curry House,%0A`;
+      msg+= name ? `Commande de ${name}%0A%0A` : "Commande:%0A%0A";
+      for(const item of selected.values()){
+        msg+=`- ${item.name} x${item.qty} (${euro(item.price*item.qty)})%0A`;
+      }
+      msg+=`%0ATotal : ${euro(calcTotal())}`;
+      window.open(`https://wa.me/33763424110?text=${msg}`,"_blank");
+    });
+
+    render();
+  </script>
+</body>
+</html>
